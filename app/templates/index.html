@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heart AI — Patient Risk Assessment</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    const storedTheme = localStorage.getItem('theme-preference');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', storedTheme || (systemPrefersDark ? 'dark' : 'light'));
+  })();
+</script>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #1c2230;
+    --border:    #2a3444;
+    --red:       #e84040;
+    --red-dim:   rgba(232,64,64,0.12);
+    --red-glow:  rgba(232,64,64,0.25);
+    --green:     #22c55e;
+    --amber:     #f59e0b;
+    --text:      #e6edf3;
+    --muted:     #7d8fa1;
+    --accent:    #58a6ff;
+    --shadow:    rgba(15, 23, 42, 0.18);
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    --bg:        #f4f7fb;
+    --surface:   #ffffff;
+    --surface2:  #edf2f8;
+    --border:    #d8e1ec;
+    --red-dim:   rgba(232,64,64,0.08);
+    --red-glow:  rgba(232,64,64,0.16);
+    --text:      #142033;
+    --muted:     #5d6f85;
+    --accent:    #1f6feb;
+    --shadow:    rgba(15, 23, 42, 0.08);
+    color-scheme: light;
+  }
+
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────── */
+  .sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 28px 20px;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+    padding: 0 6px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--red);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 18px var(--red-glow);
+    flex-shrink: 0;
+  }
+
+  .logo-icon svg { width: 20px; height: 20px; fill: white; }
+
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 10px;
+    margin-bottom: 10px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .2s;
+    margin-bottom: 3px;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+
+  .nav-item.active {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(232,64,64,0.2);
+  }
+
+  .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  .sidebar-info {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .sidebar-info p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .sidebar-info span { color: var(--green); font-weight: 600; }
+
+  /* ── MAIN CONTENT ────────────────────────────── */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    padding: 40px 48px;
+    max-width: calc(100vw - 240px);
+  }
+
+  /* ── TOP BAR ─────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 36px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 34px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .theme-toggle {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .2s, box-shadow .2s;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .theme-toggle svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+  }
+
+  .badge-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── STATS STRIP ─────────────────────────────── */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+    box-shadow: 0 14px 36px var(--shadow);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--accent));
+    border-radius: 2px 2px 0 0;
+  }
+
+  .stat-card:hover { border-color: var(--card-color, var(--accent)); }
+
+  .stat-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .stat-icon svg { width: 18px; height: 18px; }
+
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+  /* ── LAYOUT: FORM + SIDEBAR ───────────────────── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── FORM CARD ────────────────────────────────── */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 32px;
+    box-shadow: 0 18px 48px var(--shadow);
+  }
+
+  .form-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-card-icon {
+    width: 44px; height: 44px;
+    background: var(--red-dim);
+    border: 1px solid rgba(232,64,64,0.25);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .form-card-icon svg { width: 22px; height: 22px; stroke: var(--red); }
+
+  .form-card-title { font-size: 17px; font-weight: 600; }
+  .form-card-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ── SECTIONS ─────────────────────────────────── */
+  .form-section {
+    margin-bottom: 28px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .fields-grid.three { grid-template-columns: repeat(3, 1fr); }
+  .fields-grid.one   { grid-template-columns: 1fr; }
+
+  /* ── FIELD ────────────────────────────────────── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .field label .req { color: var(--red); }
+
+  .field input, .field select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+    appearance: none;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+  }
+
+  .field input::placeholder { color: #3d4f63; }
+
+  .field .hint {
+    font-size: 11px;
+    color: #3d4f63;
+    margin-top: -3px;
+  }
+
+  /* Select arrow */
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* ── SUBMIT ───────────────────────────────────── */
+  .submit-row {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn-primary {
+    flex: 1;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all .2s;
+    box-shadow: 0 4px 20px var(--red-glow);
+  }
+
+  .btn-primary:hover {
+    background: #cf3636;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px rgba(232,64,64,0.4);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-primary svg { width: 18px; height: 18px; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 22px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── RIGHT SIDEBAR ────────────────────────────── */
+  .right-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 14px 40px var(--shadow);
+  }
+
+  .info-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-card-title svg { width: 15px; height: 15px; stroke: var(--accent); }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:first-child { color: var(--muted); }
+  .info-row span:last-child { font-weight: 500; }
+
+  .risk-meter {
+    margin-top: 4px;
+  }
+
+  .meter-bar {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 99px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--green) 0%, var(--amber) 50%, var(--red) 100%);
+    width: 0%;
+    transition: width 1s ease;
+  }
+
+  .meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .factor-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .factor-item:last-child { border-bottom: none; }
+
+  .factor-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── LOADING OVERLAY ──────────────────────────── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 50px; height: 50px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; color: var(--muted); }
+
+  /* ── ECG LINE ANIMATION ───────────────────────── */
+  .ecg-strip {
+    padding: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .ecg-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .ecg-svg { width: 100%; }
+
+  .ecg-line {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: ecgDraw 2.5s ease forwards infinite;
+  }
+
+  @keyframes ecgDraw {
+    0%   { stroke-dashoffset: 600; opacity: 1; }
+    80%  { stroke-dashoffset: 0;   opacity: 1; }
+    100% { stroke-dashoffset: 0;   opacity: 0; }
+  }
+
+  @media (max-width: 1100px) {
+    .stats-strip,
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .main {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    body {
+      display: block;
+    }
+
+    .sidebar {
+      position: static;
+      width: 100%;
+      min-height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .main {
+      margin-left: 0;
+      padding: 28px 20px 36px;
+    }
+
+    .topbar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .topbar-actions {
+      width: 100%;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .stats-strip,
+    .fields-grid,
+    .fields-grid.three {
+      grid-template-columns: 1fr;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Analyzing patient data...</div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    </div>
+    <span class="logo-text">Heart AI</span>
+  </div>
+
+  <div class="nav-label">Navigation</div>
+
+  <a href="#" class="nav-item">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </a>
+
+  <a href="index.html" class="nav-item active">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Risk Analysis
+  </a>
+
+  <a href="#" class="nav-item">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    Reports
+  </a>
+
+  <a href="#" class="nav-item">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2m0 16v2m7.07-4.93l-1.41-1.41M5.34 18.66l1.41-1.41M20 12h2M2 12h2"/></svg>
+    Settings
+  </a>
+
+  <div class="sidebar-bottom">
+    <div class="sidebar-info">
+      <p>Model: <span>XAI Ensemble v2.1</span></p>
+      <p style="margin-top:6px">Dataset: Cleveland UCI • 303 records</p>
+      <p style="margin-top:6px">Accuracy: <span>88.5%</span> • AUC: <span>0.91</span></p>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div>
+      <div class="page-title">Patient Risk Assessment</div>
+      <div class="page-subtitle">Enter clinical parameters to generate an AI-powered cardiovascular risk report</div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle color theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <path id="themeIconPath" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span id="themeToggleText">Light Mode</span>
+      </button>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Model Online
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-card" style="--card-color:#e84040">
+      <div class="stat-icon"><svg fill="none" viewBox="0 0 24 24" stroke="#e84040" stroke-width="2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
+      <div class="stat-value">88.5%</div>
+      <div class="stat-label">Model Accuracy</div>
+    </div>
+    <div class="stat-card" style="--card-color:#58a6ff">
+      <div class="stat-icon"><svg fill="none" viewBox="0 0 24 24" stroke="#58a6ff" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+      <div class="stat-value">0.91</div>
+      <div class="stat-label">AUC-ROC Score</div>
+    </div>
+    <div class="stat-card" style="--card-color:#22c55e">
+      <div class="stat-icon"><svg fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+      <div class="stat-value">297</div>
+      <div class="stat-label">Training Samples</div>
+    </div>
+    <div class="stat-card" style="--card-color:#f59e0b">
+      <div class="stat-icon"><svg fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+      <div class="stat-value">10</div>
+      <div class="stat-label">Clinical Features</div>
+    </div>
+  </div>
+
+  <!-- CONTENT GRID -->
+  <div class="content-grid">
+
+    <!-- FORM CARD -->
+    <div class="form-card">
+      <div class="form-card-header">
+        <div class="form-card-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="form-card-title">Patient Clinical Parameters</div>
+          <div class="form-card-desc">Fill all fields accurately for reliable risk prediction</div>
+        </div>
+      </div>
+
+      <form action="/predict" method="POST" id="riskForm" onsubmit="handleSubmit(event)">
+
+        <!-- SECTION 1: DEMOGRAPHICS -->
+        <div class="form-section">
+          <div class="section-label">Demographics</div>
+          <div class="fields-grid three">
+            <div class="field">
+              <label>Age <span class="req">*</span></label>
+              <input type="number" name="age" placeholder="e.g. 54" min="1" max="120" required>
+              <span class="hint">Years</span>
+            </div>
+            <div class="field">
+              <label>Sex <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="sex" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="1">Male</option>
+                  <option value="0">Female</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Chest Pain Type <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="cp" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="0">0 — Typical Angina</option>
+                  <option value="1">1 — Atypical Angina</option>
+                  <option value="2">2 — Non-Anginal</option>
+                  <option value="3">3 — Asymptomatic</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: VITALS -->
+        <div class="form-section">
+          <div class="section-label">Vital Signs</div>
+          <div class="fields-grid">
+            <div class="field">
+              <label>Resting Blood Pressure <span class="req">*</span></label>
+              <input type="number" name="trestbps" placeholder="e.g. 130" min="50" max="250" required>
+              <span class="hint">mm Hg on admission</span>
+            </div>
+            <div class="field">
+              <label>Max Heart Rate Achieved <span class="req">*</span></label>
+              <input type="number" name="thalach" placeholder="e.g. 150" min="60" max="220" required>
+              <span class="hint">Beats per minute</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: BLOOD WORK -->
+        <div class="form-section">
+          <div class="section-label">Blood Work</div>
+          <div class="fields-grid three">
+            <div class="field">
+              <label>Cholesterol <span class="req">*</span></label>
+              <input type="number" name="chol" placeholder="e.g. 246" min="100" max="600" required>
+              <span class="hint">mg/dl serum</span>
+            </div>
+            <div class="field">
+              <label>Fasting Blood Sugar <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="fbs" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="1">1 — Above 120 mg/dl</option>
+                  <option value="0">0 — Below 120 mg/dl</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Resting ECG <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="restecg" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="0">0 — Normal</option>
+                  <option value="1">1 — ST-T Abnormality</option>
+                  <option value="2">2 — LV Hypertrophy</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4: EXERCISE TEST -->
+        <div class="form-section">
+          <div class="section-label">Exercise Test Results</div>
+          <div class="fields-grid three">
+            <div class="field">
+              <label>Exercise Angina <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="exang" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="1">1 — Yes</option>
+                  <option value="0">0 — No</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Oldpeak (ST Depression) <span class="req">*</span></label>
+              <input type="number" name="oldpeak" placeholder="e.g. 1.0" step="0.1" min="0" max="10" required>
+              <span class="hint">Induced by exercise</span>
+            </div>
+            <div class="field">
+              <label>Slope of ST Segment <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select name="slope" required>
+                  <option value="" disabled selected>Select</option>
+                  <option value="0">0 — Upsloping</option>
+                  <option value="1">1 — Flat</option>
+                  <option value="2">2 — Downsloping</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBMIT -->
+        <div class="submit-row">
+          <button type="submit" class="btn-primary">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            Analyze Risk
+          </button>
+          <button type="reset" class="btn-secondary">Clear Form</button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="right-sidebar">
+
+      <!-- ECG STRIP -->
+      <div class="info-card">
+        <div class="ecg-strip">
+          <div class="ecg-label">ECG Monitor</div>
+          <svg class="ecg-svg" viewBox="0 0 260 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline class="ecg-line" points="0,30 20,30 30,30 35,10 40,50 45,30 60,30 70,30 80,10 85,50 90,30 110,30 120,10 125,50 130,30 150,30 155,10 160,50 165,30 185,30 190,10 195,50 200,30 220,30 230,10 235,50 240,30 260,30"
+              stroke="#e84040" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- KEY RISK FACTORS -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Top SHAP Risk Factors
+        </div>
+        <div class="factor-item"><span class="factor-dot" style="background:#e84040"></span>Chest Pain (cp)</div>
+        <div class="factor-item"><span class="factor-dot" style="background:#f59e0b"></span>Max Heart Rate (thalach)</div>
+        <div class="factor-item"><span class="factor-dot" style="background:#58a6ff"></span>Exercise Angina (exang)</div>
+        <div class="factor-item"><span class="factor-dot" style="background:#58a6ff"></span>Oldpeak (ST Depression)</div>
+        <div class="factor-item"><span class="factor-dot" style="background:#58a6ff"></span>Cholesterol (chol)</div>
+      </div>
+
+      <!-- MODEL INFO -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+          Model Information
+        </div>
+        <div class="info-row"><span>Algorithm</span><span>Calibrated Random Forest</span></div>
+        <div class="info-row"><span>Calibration</span><span>Sigmoid (Platt Scaling)</span></div>
+        <div class="info-row"><span>Explainability</span><span>SHAP (TreeExplainer)</span></div>
+        <div class="info-row"><span>Features Used</span><span>10 Clinical Inputs</span></div>
+        <div class="info-row"><span>Dataset</span><span>Cleveland UCI</span></div>
+      </div>
+
+      <!-- DISCLAIMER -->
+      <div class="info-card" style="border-color:rgba(245,158,11,0.3)">
+        <div class="info-card-title" style="color:var(--amber)">
+          <svg fill="none" viewBox="0 0 24 24" stroke="var(--amber)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          Clinical Disclaimer
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">This tool is for <strong style="color:var(--text)">decision support only</strong> and does not replace professional medical diagnosis. Always consult a qualified physician.</p>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  function getNextTheme(theme) {
+    return theme === 'dark' ? 'light' : 'dark';
+  }
+
+  function updateThemeToggle(theme) {
+    const toggleText = document.getElementById('themeToggleText');
+    const iconPath = document.getElementById('themeIconPath');
+    const nextTheme = getNextTheme(theme);
+
+    toggleText.textContent = nextTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
+    iconPath.setAttribute(
+      'd',
+      nextTheme === 'dark'
+        ? 'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z'
+        : 'M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z'
+    );
+  }
+
+  function applyColorTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme-preference', theme);
+    updateThemeToggle(theme);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('active');
+    setTimeout(() => { e.target.submit(); }, 1200);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+
+    updateThemeToggle(currentTheme);
+
+    themeToggle.addEventListener('click', function() {
+      const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyColorTheme(getNextTheme(activeTheme));
+    });
+  });
+</script>
+</body>
+</html>

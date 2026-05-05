@@ -1,0 +1,7 @@
+venv/
+app/venv/
+__pycache__/
+*.pyc
+*.pkl
+*.joblib
+.env
